@@ -5,32 +5,33 @@ The simplest possible AI integration — pack all friend profiles into one
 prompt and ask the model for recommendations in a single round-trip.
 """
 
+import json
+import sqlite3
 import requests
+import textwrap
+
+from seed_db import seed_db
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL = "llama3.2"
+MODEL = "llama3.2:latest"
+DB_PATH = "group_activity.db"
 
-## Sample friend profiles that will be coming from a database soon
-friends = [
-    {
-        "name": "Alice",
-        "interests": ["hiking", "photography", "coffee", "indie music"],
-        "activities_done_solo": ["completed a 10k run", "attended a photography workshop"],
-        "activities_done_with_group": ["brewery tour", "escape room"],
-    },
-    {
-        "name": "Bob",
-        "interests": ["cooking", "board games", "cycling", "coffee"],
-        "activities_done_solo": ["took a knife-skills cooking class", "weekend bike trip"],
-        "activities_done_with_group": ["brewery tour", "trivia night"],
-    },
-    {
-        "name": "Carol",
-        "interests": ["yoga", "travel", "food", "coffee", "photography"],
-        "activities_done_solo": ["solo trip to Portugal", "joined a yoga retreat"],
-        "activities_done_with_group": ["escape room", "trivia night"],
-    },
-]
+
+def load_friends(db_path: str = DB_PATH) -> list[dict]:
+    """Load all friend profiles from the local SQLite database."""
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    rows = con.execute("SELECT * FROM friends").fetchall()
+    con.close()
+    return [
+        {
+            "name": row["name"],
+            "interests": json.loads(row["interests"]),
+            "activities_done_solo": json.loads(row["activities_done_solo"]),
+            "activities_done_with_group": json.loads(row["activities_done_with_group"]),
+        }
+        for row in rows
+    ]
 
 
 def build_prompt(friends: list[dict]) -> str:
@@ -61,7 +62,7 @@ def build_prompt(friends: list[dict]) -> str:
 
                 Keep the tone friendly and concrete."""
 
-    return prompt
+    return textwrap.dedent(prompt)
 
 
 def ask_ollama(prompt: str, model: str = MODEL) -> str:
@@ -86,6 +87,9 @@ def ask_ollama(prompt: str, model: str = MODEL) -> str:
 
 
 def main():
+    seed_db()
+
+    friends = load_friends()
     print("Building prompt from friend profiles...")
     prompt = build_prompt(friends)
 
