@@ -3,3 +3,7 @@ charset-normalizer==3.4.6
 idna==3.11
 requests==2.32.5
 urllib3==2.6.3
+
+# Step 2: MCP servers + web search
+mcp==1.26.0
+ddgs==9.12.0
